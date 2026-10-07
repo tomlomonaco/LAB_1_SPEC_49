@@ -83,3 +83,15 @@ test('log audit: single-line JSON with required fields; no secrets, emails or me
   } finally { await h.close(); }
 });
 
+
+test('bridge eventId and receivedAt are logged on classification and on envelope rejection (FR-002)', async () => {
+  const h = await createHarness();
+  try {
+    await h.sendRaw(JSON.stringify({ pairId: 'test_pair', eventId: 'evt_x', receivedAt: '2026-10-07T20:00:00Z', contentType: 'application/json', payload: { hello: 'world' } }));
+    const c = h.logs.find('routing.classify', 'success').at(-1);
+    assert.equal(c.bridgeEventId, 'evt_x'); assert.equal(c.bridgeReceivedAt, '2026-10-07T20:00:00Z');
+    await h.sendRaw(JSON.stringify({ pairId: 'other', eventId: 'evt_y', receivedAt: '2026-10-07T20:01:00Z', contentType: 'application/json', payload: {} }));
+    const r = h.logs.find('bridge.envelope', 'rejected').at(-1);
+    assert.equal(r.bridgeEventId, 'evt_y'); assert.equal(r.bridgeReceivedAt, '2026-10-07T20:01:00Z');
+  } finally { await h.close(); }
+});

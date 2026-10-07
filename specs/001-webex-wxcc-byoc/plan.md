@@ -69,7 +69,8 @@ Repository root also holds `deviations.md`, `.env.example`, and `.gitignore` (ex
 
 ```text
 src/
-├── index.js                 # startup: config → clients → bridge → readiness
+├── index.js                 # startup: config load/validate, signals, start app
+├── app.js                   # wiring: clients, store, registry, dispatcher, bridge, readiness; frame pipeline
 ├── config.js                # loadEnvFile + validation (names only on failure)
 ├── log.js                   # log() + redaction
 ├── bridge/
@@ -87,6 +88,7 @@ src/
 │   ├── conversations.js     # roomId↔taskId store, queue, pending timer
 │   └── idempotency.js       # claim(key)
 ├── clients/
+│   ├── http.js              # fetch wrapper + HttpError/ContractError
 │   ├── webex.js             # GET/POST /v1/messages
 │   ├── wxcc.js              # POST /v2/tasks, /v2/tasks/{id}/messages
 │   └── wxcc-auth.js         # refresh-token grant
@@ -97,6 +99,7 @@ scripts/
 └── extract-schemas.js       # vendors OpenAPI schema extracts
 
 tests/
+├── helpers/harness.js       # loopback Webex/WxCC/token mock + wired app + log capture
 ├── fixtures/                # production-shaped Webex, WxCC, bridge payloads (+ fake-bridge.js using ws)
 ├── contract/                # URL/method/header/body/status vs schemas
 ├── unit/

@@ -1,4 +1,4 @@
-﻿---
+---
 
 description: "Task list for Webex Messaging to WxCC BYOC middleware"
 ---
@@ -177,7 +177,7 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 
 - [X] T062 [US5] Add sender guards at the top of `handleWebexMessage` in `src/handlers/webex-inbound.js` (compare `data.personEmail`, then the fetched message's `personEmail`, to `WXCC_BUSINESS_ADDRESS` and `WEBEX_BOT_EMAIL` case-insensitively) before any WxCC call
 - [X] T063 [US5] Ensure every rejection path uses `reject()` from `src/handlers/rejection.js` across `src/handlers/index.js`, `webex-inbound.js`, `wxcc-events.js`, and the bridge socket
-- [X] T064 [US5] Log the bridge `eventId` on every record (no registry claim; the bridge id is unique per delivery per research R-06) and ensure duplicate outcomes from payload-based keys log `outcome: "duplicate"` with the original key
+- [X] T064 [US5] Log the bridge `eventId` on every record, claim the informational bridge key `bridge:{pairId}:{eventId}` (research R-06; see T083), and ensure duplicate outcomes from payload-based keys log `outcome: "duplicate"` with the original key
 - [X] T065 [US5] Validate embedded payload shape before routing in `src/events/classify.js` (required `data` fields per kind; missing → `malformed-payload`)
 
 **Checkpoint**: Loop, replay, and bad-input protection verified.
@@ -282,3 +282,12 @@ Anyone:      T009, T010, T011 (fixtures), T016 → T017, T018 → T019
 
 - Total tasks: 84 (original 81 plus T012a, T034a, T035a)
 - Setup 5, Foundational 27 (T006–T032), US1 8 (T033–T040), US2 11 (T041–T051), US3 7 (T052–T058), US5 7 (T059–T065), US4 4 (T066–T069), US6 5 (T070–T074), Polish 7 (T075–T081)
+
+
+## Phase 10: Convergence
+
+- [X] T082 Log the bridge `receivedAt` alongside `eventId` on the `routing.classify` entry in `src/app.js` and on `bridge.envelope` rejections, and add an assertion in `tests/integration/us6-operations.test.js` that both fields appear per FR-002 (partial)
+- [X] T083 Claim the informational bridge-delivery key `bridge:{pairId}:{eventId}` in `src/app.js` before dispatch (a repeated identical frame logs `duplicate` and is skipped), add a test in `tests/integration/us5-safety.test.js`, and align `specs/001-webex-wxcc-byoc/research.md` R-06 and `tasks.md` T064 wording per plan: bridge-delivery idempotency key (research R-06) (partial)
+- [X] T084 Add bridge and room correlation (`bridgeEventId`, `roomId`) to the `webex.get-message` failure log by logging the handler-side failure in `src/handlers/webex-inbound.js` (catch block), with a test in `tests/integration/us1-create-task.test.js`, per FR-027 (partial)
+- [X] T085 Add a `--check` mode to `scripts/extract-schemas.js` that re-downloads the OpenAPI specs and fails when `src/contracts/wxcc-schemas.json` or `webex-schemas.json` differs from upstream (ignoring `retrieved`), and expose it as `npm run check-schemas` per research R-02 (partial)
+- [X] T086 Reconcile plan structure drift: add the files created outside the plan's source tree (`src/app.js`, `src/clients/http.js`, `tests/helpers/harness.js`) to `specs/001-webex-wxcc-byoc/plan.md`, or justify/remove them, per plan: project structure (unrequested)

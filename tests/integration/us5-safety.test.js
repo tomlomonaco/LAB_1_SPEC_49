@@ -108,3 +108,14 @@ for (const [label, raw, reason] of frames()) {
     if (reason === 'malformed-envelope') assert.equal(lastReject().level, 'error');
   });
 }
+
+test('an identical bridge frame replayed is skipped (bridge delivery key)', async () => {
+  h.mock.addWebexMessage({ id: 'MB' });
+  const raw = wrap(messageCreatedWebhook({ messageId: 'MB' }));
+  await h.sendRaw(raw); await h.sendRaw(raw);
+  assert.equal(creates().length, 1);
+  const dup = h.logs.find('bridge.frame', 'duplicate');
+  assert.equal(dup.length, 1);
+  assert.match(dup[0].key, /^bridge:test_pair:evt_/);
+  assert.equal(h.logs.find('webex.message', 'duplicate').length, 0);
+});

@@ -1,4 +1,4 @@
-﻿// Bridge envelope validation per hook-to-socket-spec.md ("Websocket Event Contract").
+// Bridge envelope validation per hook-to-socket-spec.md ("Websocket Event Contract").
 export function parseEnvelope(raw, pairId) {
   let value = raw;
   if (typeof raw === 'string') {
@@ -12,7 +12,7 @@ export function parseEnvelope(raw, pairId) {
     return { ok: false, reason: 'malformed-envelope', detail: 'envelope is not an object' };
   }
   const { pairId: pid, eventId, receivedAt, contentType, payload } = value;
-  const detail = (d) => ({ ok: false, reason: 'malformed-envelope', detail: d, bridgeEventId: typeof eventId === 'string' ? eventId : undefined });
+  const detail = (d) => ({ ok: false, reason: 'malformed-envelope', detail: d, bridgeEventId: typeof eventId === 'string' ? eventId : undefined, receivedAt: typeof receivedAt === 'string' ? receivedAt : undefined });
   if (pid !== pairId) return detail('pairId mismatch');
   if (typeof eventId !== 'string' || eventId === '') return detail('missing eventId');
   if (typeof receivedAt !== 'string' || receivedAt === '') return detail('missing receivedAt');

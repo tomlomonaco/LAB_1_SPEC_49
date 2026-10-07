@@ -1,4 +1,4 @@
-﻿import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { log } from '../log.js';
 import { DELIVERY_FAILED_TEXT } from '../messages.js';
 import { reject } from './rejection.js';
@@ -68,8 +68,10 @@ export function createWebexInbound({ config, registry, store, webex, wxcc }) {
     let message;
     try {
       message = await webex.getMessage(data.id);
-    } catch {
-      return; // already logged by the client; no retry (FR-011d)
+    } catch (error) {
+      // The client logged the API failure; this entry adds bridge/room correlation. No retry (FR-011d).
+      log('error', 'webex.message', 'failure', ids, error);
+      return;
     }
     const late = senderGuard(message.personEmail ?? data.personEmail);
     if (late) return reject(late, ids, { operation: 'webex.ignore' });

@@ -39,7 +39,7 @@ Spec sources (pinned for contract tests): https://github.com/webex/webex-openapi
 
 ### R-06 Idempotency keys
 - **Decision**: In-process `Map` of claimed keys (no eviction; lifetime of process per spec). Claim synchronously before any `await`, so concurrent duplicates cannot both pass. A claimed key stays claimed after a failure (no automatic retry per spec FR-011b; a customer resend has a new Webex message id).
-  - Bridge delivery: `bridge:{pairId}:{eventId}` (redelivery of the identical frame only; informational).
+  - Bridge delivery: `bridge:{pairId}:{eventId}` (redelivery of the identical frame only). Claimed in `src/app.js`; a repeat is logged `duplicate` and skipped. It does not replace payload-based keys, because the bridge assigns a new `eventId` per delivery.
   - Webex: `webex:message:{data.id}`.
   - WxCC: see key table in [wxcc-webhooks.md](./contracts/wxcc-webhooks.md).
 - **Alternatives**: LRU/TTL (breaks "lifetime of process"); disk persistence (out of scope, YAGNI).

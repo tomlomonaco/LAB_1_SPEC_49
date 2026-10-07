@@ -1,4 +1,4 @@
-﻿import { parseEnvelope } from './bridge/envelope.js';
+import { parseEnvelope } from './bridge/envelope.js';
 import { createBridgeClient } from './bridge/socket.js';
 import { classify } from './events/classify.js';
 import { createWebexClient } from './clients/webex.js';
@@ -33,12 +33,17 @@ export function createApp(config, overrides = {}) {
   async function handleFrame(raw) {
     const parsed = parseEnvelope(raw, config.bridge.pairId);
     if (!parsed.ok) {
-      reject(parsed.reason, { bridgeEventId: parsed.bridgeEventId, detail: parsed.detail }, { level: 'error', operation: 'bridge.envelope' });
+      reject(parsed.reason, { bridgeEventId: parsed.bridgeEventId, bridgeReceivedAt: parsed.receivedAt, detail: parsed.detail }, { level: 'error', operation: 'bridge.envelope' });
+      return;
+    }
+    const bridgeKey = `bridge:${config.bridge.pairId}:${parsed.envelope.eventId}`;
+    if (!registry.claim(bridgeKey)) {
+      log('warn', 'bridge.frame', 'duplicate', { bridgeEventId: parsed.envelope.eventId, bridgeReceivedAt: parsed.envelope.receivedAt, key: bridgeKey });
       return;
     }
     const classified = classify(parsed.envelope);
     log('info', 'routing.classify', 'success', {
-      bridgeEventId: classified.bridge.eventId, source: classified.source, kind: classified.kind, direction: classified.direction
+      bridgeEventId: classified.bridge.eventId, bridgeReceivedAt: classified.bridge.receivedAt, source: classified.source, kind: classified.kind, direction: classified.direction
     });
     try {
       await dispatcher.dispatch(classified);

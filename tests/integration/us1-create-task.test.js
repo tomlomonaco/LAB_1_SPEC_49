@@ -79,3 +79,10 @@ test('task:new arriving between frames cannot race creation (frames are serializ
   assert.equal(h.app.store.get(ROOM_ID).state, 'active');
 });
 
+
+test('a failed Webex message fetch logs bridge and room correlation', async () => {
+  await h.send(messageCreatedWebhook({ messageId: 'GONE' }));
+  const e = h.logs.find('webex.message', 'failure')[0];
+  assert.ok(e.bridgeEventId); assert.equal(e.roomId, ROOM_ID); assert.equal(e.messageId, 'GONE');
+  assert.equal(e.error.status, 404);
+});
