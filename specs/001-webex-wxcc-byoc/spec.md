@@ -1,4 +1,4 @@
-# Feature Specification: Webex Messaging to WxCC BYOC Middleware
+﻿# Feature Specification: Webex Messaging to WxCC BYOC Middleware
 
 **Feature Branch**: `001-webex-wxcc-byoc`
 
@@ -21,6 +21,14 @@ Each of these MUST be reviewed and followed before design or implementation. Whe
 | WxCC task API contracts | Official WxCC OpenAPI specification |
 | WebSocket connection and message envelope | `hook-to-socket-spec.md` |
 
+## Clarifications
+
+### Session 2026-10-07
+
+- Q: Which WxCC task event counts as task closed? → A: `task:ended` only.
+- Q: What does the customer see if forwarding to WxCC fails? → A: A brief delivery-failed notice; no automatic retry.
+- Q: How are messages handled while a task is still being created? → A: Queued in arrival order and appended after `task:new`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Webex user starts a contact-center chat (Priority: P1)
@@ -35,7 +43,7 @@ A customer sends a text message to the Webex bot. With no active WxCC task for t
 
 1. **Given** no active task for a Webex conversation, **When** a valid inbound text message arrives, **Then** exactly one WxCC task is created with the message text and `Origin.id` set to the sender's `personEmail`.
 2. **Given** the task-creation call returns `202 Accepted` with a body valid against the authoritative schema, **When** the response is processed, **Then** it is accepted as success and the deviation is logged as the approved one.
-3. **Given** task creation fails, **When** the failure occurs, **Then** a failure log is emitted and no association is stored.
+3. **Given** task creation fails (including `task:failed`), **When** the failure occurs, **Then** a failure log is emitted, no association is stored, queued messages are discarded, and the Webex user receives a brief delivery-failed notice with no automatic retry.
 
 ---
 
@@ -80,7 +88,7 @@ When a WxCC task closes, the Webex user is notified that the chat has ended, and
 
 **Acceptance Scenarios**:
 
-1. **Given** an active association, **When** a task lifecycle event signalling closure arrives, **Then** the Webex user receives a chat-ended message and the association is cleared.
+1. **Given** an active association, **When** a `task:ended` lifecycle event arrives, **Then** the Webex user receives a chat-ended message and the association is cleared.
 2. **Given** a cleared association, **When** the customer messages again, **Then** a new task is created.
 
 ---
@@ -123,12 +131,12 @@ An operator configures the service via `.env`, and the service refuses to proces
 - Webex and WxCC events share one webhook path: source and direction are classified before any processing.
 - Bot messages from the bot's own account or the business address arrive: ignored, never looped.
 - Task creation returns `202` but the later task-created or failed event never arrives or reports failure: failure is logged and no stale association remains.
-- Two messages from the same conversation arrive while the task is being created: only one task is created, and the second is appended or retried once the task exists.
+- Messages arrive while the task is being created (before `task:new`): they are queued in arrival order and appended after `task:new`; only one task is created.
 - Webex message text is empty, whitespace-only, attachment-only, or carries files: rejected.
 - A WxCC event references a task with no conversation association: not delivered and logged.
 - The process restarts: associations and idempotency records are lost (see Assumptions).
 - Access token for WxCC expires: refreshed through the refresh-token workflow; failure to refresh is logged and the affected event is reported as failed.
-- A WxCC lifecycle event with an inbound `data.direction` for a non-closure state: does not trigger Webex notifications.
+- A WxCC lifecycle event other than `task:ended`: does not trigger a chat-ended notification.
 
 ## Requirements *(mandatory)*
 
@@ -150,12 +158,14 @@ An operator configures the service via `.env`, and the service refuses to proces
 - **FR-009**: The system MUST append valid inbound messages to the conversation's active task.
 - **FR-010**: The system MUST maintain a conversation-to-task association so that appends and outbound routing use the same conversation and task.
 - **FR-011**: Only inbound traffic may create or append tasks or trigger Webex message ingestion.
+- **FR-011a**: Messages received while a task is being created MUST be queued in arrival order and appended after `task:new`; if `task:failed` arrives instead, queued messages are discarded.
+- **FR-011b**: If a message cannot be forwarded to WxCC (create or append failure), the system MUST send the Webex user a brief delivery-failed notice and MUST NOT retry automatically.
 
 **Outbound WxCC handling**
 
 - **FR-012**: The system MUST evaluate lifecycle events by `data.direction` and task-message events by `data.messageDirection`.
 - **FR-013**: The system MUST deliver outbound task messages to the associated Webex conversation via the Webex Messages API and MUST NOT echo them back to the WxCC task.
-- **FR-014**: On task closure, the system MUST notify the Webex user that the chat has ended and clear the association.
+- **FR-014**: On a `task:ended` event, the system MUST notify the Webex user that the chat has ended and clear the association.
 
 **Idempotency**
 
@@ -213,6 +223,5 @@ An operator configures the service via `.env`, and the service refuses to proces
 - Messaging is text-only; attachments, cards, and reactions are out of scope and rejected.
 - The bridge neither authenticates nor deduplicates; the middleware handles both at the application level.
 - Webex webhooks and WxCC webhooks are already registered to deliver to the bridge pair webhook URL.
-- A task is considered closed when WxCC publishes the closure lifecycle event defined in `webhooks-cc.md`.
 - The exact stable identifiers for idempotency (for example Webex message ID and WxCC message ID) are taken from the authoritative payload definitions during planning.
 - The customer's `personEmail` is used for `Origin.id` and is treated as sensitive: logged only in redacted form.
