@@ -29,10 +29,10 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 
 ## Phase 1: Setup
 
-- [ ] T001 Create `package.json` with `"type": "module"`, `"engines": {"node": ">=26"}`, scripts `start` (`node src/index.js`), `test` (`node --test tests/`), `audit` (`npm audit --audit-level=moderate`), and runtime dependencies `ajv` and `ajv-formats` only
+- [ ] T001 Create `package.json` with `"type": "module"`, `"engines": {"node": ">=26"}`, scripts `start` (`node src/index.js`), `test` (`node --test tests/`), `audit` (`npm audit --audit-level=moderate`), runtime dependencies `ajv` and `ajv-formats` only, and devDependency `ws` (test-only fake bridge WebSocket server; Node has no built-in server; Constitution IV justification recorded in plan.md)
 - [ ] T002 [P] Create `.gitignore` excluding `node_modules/`, `.env`, `*.log`, and `manual-run.log`
 - [ ] T003 [P] Create `.env.example` at repo root organized by service sections (Bridge, Webex, WxCC, Service) with the exact variables, kinds, and placeholders from `specs/001-webex-wxcc-byoc/contracts/configuration.md`; comment each URL as `# root (scheme + host only)` or `# endpoint (complete URL, used verbatim)`; placeholders only
-- [ ] T004 [P] Create empty module skeleton directories and `.gitkeep`-free placeholder files per plan.md: `src/bridge/`, `src/events/`, `src/handlers/`, `src/state/`, `src/clients/`, `src/contracts/`, `tests/fixtures/`, `tests/contract/`, `tests/unit/`, `tests/integration/`
+- [ ] T004 [P] Create the directories from plan.md: `src/bridge/`, `src/events/`, `src/handlers/`, `src/state/`, `src/clients/`, `src/contracts/`, `scripts/`, `tests/fixtures/`, `tests/contract/`, `tests/unit/`, `tests/integration/` (files are added by later tasks)
 - [ ] T005 Run `npm install` to create `package-lock.json`, then `npm audit --audit-level=moderate` and record zero findings (Constitution II)
 
 ---
@@ -43,9 +43,9 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 
 ### Contracts and fixtures
 
-- [ ] T006 Create `scripts/extract-schemas.js` that downloads `https://raw.githubusercontent.com/webex/webex-openapi-specs/main/public-spec/webex-contact-center.json` and `.../webex-messaging.json`, extracts verbatim the component schemas `CreateTaskRequestV2`, `CustomMessaging`, `CustomMessagingParams`, `TextMessage`, `TextWithAttachment`, `Attachment`, `CreateTaskResponse`, `TaskMessageRequest`, `CustomMessageAppendTaskRequest`, `TaskMessageResponse` and the Webex `Message` schema, and writes them with a header of source URL and retrieval date (uses `node:path`)
+- [ ] T006 Create `scripts/extract-schemas.js` that downloads `https://raw.githubusercontent.com/webex/webex-openapi-specs/main/public-spec/webex-contact-center.json` and `.../webex-messaging.json`, extracts verbatim the component schemas `CreateTaskRequestV2`, `CustomMessaging`, `CustomMessagingParams`, `TextMessage`, `TextWithAttachment`, `Attachment`, `CreateTaskResponse`, `TaskMessageRequest`, `CustomMessageAppendTaskRequest`, `TaskMessageResponse` and the Webex `Message` schema, bundles every transitive `$ref` target so each extract is self-contained, and writes them with a header of source URL and retrieval date (uses `node:path`)
 - [ ] T007 Run `scripts/extract-schemas.js` to generate `src/contracts/wxcc-schemas.json` and `src/contracts/webex-schemas.json`
-- [ ] T008 Implement `src/contracts/validators.js` exporting Ajv (strict off for OpenAPI keywords, `ajv-formats`) validators: `validateCreateTaskRequest`, `validateCreateTaskResponse`, `validateAppendRequest`, `validateAppendResponse`, `validateWebexMessage`; each returns `{valid, errors}` with errors safe to log (no data values)
+- [ ] T008 Implement `src/contracts/validators.js` exporting Ajv (strict off for OpenAPI keywords, `ajv-formats`) validators: `validateCreateTaskRequest`, `validateCreateTaskResponse`, `validateAppendRequest`, `validateAppendResponse`, `validateWebexMessage`; each returns `{valid, errors}` with errors safe to log (no data values); add `tests/unit/validators.test.js` asserting every validator compiles and accepts the fixture bodies
 - [ ] T009 [P] Create production-shaped fixtures (placeholder ids, `example.com` emails) in `tests/fixtures/webex.js`: `messages.created` webhook (shape from `webhooks.md`), Get Message Details response (text-only, empty text, with `files`), Create Message response
 - [ ] T010 [P] Create fixtures in `tests/fixtures/wxcc.js`: `task:new`, `task:failed` (`CONVERSATION_ALREADY_OPEN`), `task:ended`, inbound `task-message:appended`, outbound `task-message:appended` (system, agent, agent-with-attachments), `task-message:append-failed`, Create Task `201` and `202` response bodies, Append `202` body, error bodies (400, 401, 429, 500), token refresh response — shapes from `webhooks-cc.md` and `bring-your-own-custom-messaging-channel.md`
 - [ ] T011 [P] Create fixtures in `tests/fixtures/bridge.js`: `wrap(payload, overrides)` building envelopes `{pairId, eventId, receivedAt, contentType: "application/json", payload}` plus malformed variants (bad JSON, wrong `pairId`, missing `eventId`, non-object payload)
@@ -53,8 +53,9 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 ### Core modules
 
 - [ ] T012 Write unit tests `tests/unit/log.test.js`: one single-line JSON per call; fields `timestamp` (ISO-8601), `level` in `info|warn|error`, `operation`, `outcome` in `success|failure|rejected|duplicate|skipped`, identifiers, `error{name,message,status,reason}`; `info` → stdout, `warn`/`error` → stderr; redaction of keys matching `token|secret|authorization|refresh|password`, `Bearer …` and JWT-like values, emails (including `personEmail`/`origin`) masked, message text never emitted
+- [ ] T012a [P] Create `src/handlers/rejection.js` (`reject(reason, ids)` logging `warn`/`error` with outcome `rejected`; reasons per data-model Rejection) and `src/messages.js` exporting the fixed notice constants `CHAT_ENDED_TEXT` and `DELIVERY_FAILED_TEXT` from spec Assumptions
 - [ ] T013 Implement `src/log.js` (`log(level, operation, outcome, ids, error)` and `redact()`), passing T012
-- [ ] T014 [P] Write unit tests `tests/unit/config.test.js`: missing/empty required variables fail naming variables only (never values); roots must be `https:` (`wss:` for `BRIDGE_WS_BASE_URL`) with no path beyond `/`; `WXCC_TOKEN_URL` must be `https:` and is returned unchanged; positive integers for `RECONNECT_DELAY_MS`, `RECONNECT_MAX_DELAY_MS`, `PENDING_TASK_TIMEOUT_MS`, `READINESS_PORT`; `PAIR_ID` matches `[a-zA-Z0-9_-]{1,64}`
+- [ ] T014 [P] Write unit tests `tests/unit/config.test.js`: missing/empty required variables fail naming variables only (never values); roots are scheme + host only (`https:`, `wss:` for `BRIDGE_WS_BASE_URL`), no path/query/trailing slash, subdomains allowed (FR-025); `WXCC_TOKEN_URL` must be `https:` and is returned unchanged; positive integers for `RECONNECT_DELAY_MS`, `RECONNECT_MAX_DELAY_MS`, `PENDING_TASK_TIMEOUT_MS`, `READINESS_PORT`; `PAIR_ID` matches `[a-zA-Z0-9_-]{1,64}`
 - [ ] T015 Implement `src/config.js` using `process.loadEnvFile` (tolerate missing file when variables are already in the environment) returning a frozen config object; invalid config throws an error listing variable names, logged via `log()` as `config.validate` failure, passing T014
 - [ ] T016 [P] Write unit tests `tests/unit/idempotency.test.js`: `claim(key)` returns true once then false; synchronous claim prevents concurrent double-processing; keys never evicted; failed processing leaves key claimed
 - [ ] T017 [P] Implement `src/state/idempotency.js` (`claim(key)`, `has(key)`) passing T016
@@ -67,7 +68,7 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 - [ ] T021 [P] Implement `src/bridge/envelope.js` (`parseEnvelope(raw, pairId)`) per `contracts/bridge-envelope.md`, passing T020
 - [ ] T022 [P] Write unit tests `tests/unit/classify.test.js` covering the tables in `contracts/bridge-envelope.md` and `contracts/wxcc-webhooks.md`: Webex (`resource`+`event`+`data`) vs WxCC (`specversion`+`type`+`data`) vs `unknown` (neither or both); Webex requires `resource=messages`, `event=created`; WxCC kinds `task.new`, `task.failed`, `task.ended`, `message.inbound`, `message.outbound`, `message.append-failed`, else `unsupported`; lifecycle direction from `data.direction`, message direction from `data.messageDirection`; non-`customMessaging` `data.channelType` → `wrong-channel`; lifecycle `OUTBOUND` direction → `wrong-direction`
 - [ ] T023 Implement `src/events/classify.js` (`classify(envelope)` → `{source, kind, direction, bridge:{eventId,receivedAt}, payload}` per the ClassifiedEvent model) passing T022; classification precedes any direction or lifecycle handling
-- [ ] T024 Write integration test `tests/integration/bridge-socket.test.js` using a fake WebSocket server (`tests/fixtures/fake-bridge.js`, built on `node:http` + the global `WebSocket` counterpart or a minimal server): client connects to `/v1/pairs/{encodeURIComponent(PAIR_ID)}/socket`; frames processed strictly in arrival order; disconnect → not-ready, bounded exponential backoff reconnect (`RECONNECT_DELAY_MS` up to `RECONNECT_MAX_DELAY_MS`); takeover close → logged `error`, no reconnect loop; malformed frames logged and skipped; no replay assumed
+- [ ] T024 Write integration test `tests/integration/bridge-socket.test.js` using a fake WebSocket server (`tests/fixtures/fake-bridge.js`, built on the `ws` devDependency, created in this task): client connects to `/v1/pairs/{encodeURIComponent(PAIR_ID)}/socket`; frames processed strictly in arrival order; disconnect → not-ready, bounded exponential backoff reconnect (`RECONNECT_DELAY_MS` up to `RECONNECT_MAX_DELAY_MS`); takeover close → logged `error`, no reconnect loop; malformed frames logged and skipped; no replay assumed
 - [ ] T025 Implement `src/bridge/socket.js` (global `WebSocket`, serial processing queue, backoff, takeover handling, `isReady()`, injectable `onEvent`) passing T024; logs `bridge.connect`, `bridge.disconnect`, `bridge.reconnect`, `bridge.frame` with `bridgeEventId`
 - [ ] T026 [P] Implement `src/readiness.js` (`node:http` server, `GET /ready` → 200 when `isReady()` else 503) and test in `tests/unit/readiness.test.js`
 
@@ -94,12 +95,14 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 
 - [ ] T033 [P] [US1] Write integration test `tests/integration/us1-create-task.test.js` (fake bridge + mock Webex + mock WxCC): valid message → `GET /v1/messages/{id}` then one `POST /v2/tasks` with `origin.id` = fixture `personEmail`; response `202` (DEV-001) and `201` both succeed; store has `taskId` and state `pending`; `task:new` envelope moves to `active`
 - [ ] T034 [P] [US1] Extend `tests/integration/us1-create-task.test.js`: create failure (400/500 or invalid body) → `wxcc.create-task` failure log, no association stored, one delivery-failed `POST /v1/messages` to the room, no retry (FR-011b)
+- [ ] T034a [P] [US1] Extend `tests/integration/us1-create-task.test.js`: `GET /v1/messages/{id}` failure (404/500) and failure of the delivery-failed `POST /v1/messages` are logged with identifiers, trigger no WxCC call and no retry, and do not block the next event (FR-011d)
 - [ ] T035 [P] [US1] Write unit tests `tests/unit/webex-inbound.test.js` for text-only extraction: accept when `text` is 1..20000 chars after trim, `files` and `attachments` absent or empty; `timestamp` = epoch ms of `created`; `aliasId` is a UUID
 
 ### Implementation for US1
 
-- [ ] T036 [US1] Implement `src/handlers/webex-inbound.js` `handleWebexMessage(event)`: claim `webex:message:{data.id}`, fetch message, build `InboundMessage`, create the conversation (`creating`), call `createTask`, store `taskId` (`pending`) and start pending timer, log each step (`webex.get-message`, `wxcc.create-task`, `task.pending`)
-- [ ] T037 [US1] Implement `src/handlers/wxcc-events.js` `handleTaskNew(event)`: claim `wxcc:task:task:new:{taskId}`, require `data.direction` `INBOUND` and `channelType` `customMessaging`, activate the conversation by `byTask`, cancel the pending timer, log `task.active`
+- [ ] T035a [US1] Implement `validateInboundMessage(message)` in `src/handlers/webex-inbound.js`: reject (`reject()` reasons `empty` or `non-text`) when `text` is missing, empty or whitespace-only, longer than 20000 chars, `files` is non-empty, or `attachments` is non-empty; passes T035, T061, and runs before any `createTask` or `appendMessage`
+- [ ] T036 [US1] Implement `src/handlers/webex-inbound.js` `handleWebexMessage(event)`: claim `webex:message:{data.id}`, fetch message (on fetch failure log `error` `webex.get-message`, no retry), run `validateInboundMessage`, build `InboundMessage`, create the conversation (`creating`), call `createTask`, store `taskId` (`pending`) and start pending timer, log each step (`webex.get-message`, `wxcc.create-task`, `task.pending`)
+- [ ] T037 [US1] Implement `src/handlers/wxcc-events.js` `handleTaskNew(event)`: claim `wxcc:task:task:new:{taskId}`, require `channelType` `customMessaging` and `data.direction` `INBOUND` (direction filtering applies to `task:new` only), activate the conversation by `byTask`, cancel the pending timer, log `task.active`
 - [ ] T038 [US1] Handle the create/response race in `src/handlers/webex-inbound.js` and `src/handlers/wxcc-events.js`: a `task:new` or `task:failed` arriving while the room is still `creating` is buffered and re-evaluated after `setPending`
 - [ ] T039 [US1] Wire dispatch in `src/handlers/index.js` (`dispatch(classified)`): `webex.message.created` → T036, `wxcc.task.new` → T037; `unknown`/`unsupported` → `warn` rejection log
 - [ ] T040 [US1] Create `src/index.js` wiring config, clients, store, registry, dispatcher, bridge socket, and readiness server; log startup `config.validate` and `ready`
@@ -120,7 +123,7 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 - [ ] T042 [P] [US2] Extend test: messages arriving in `pending` are queued in arrival order and appended in that order after `task:new` (FR-011a); only one task is created
 - [ ] T043 [P] [US2] Extend test: `task:failed` while pending discards queued messages, sends one delivery-failed notice, clears the association
 - [ ] T044 [P] [US2] Extend test: after `task:ended` clears the association, the next message creates a new task (Acceptance Scenario 2)
-- [ ] T045 [P] [US2] Extend test: pending timeout (`PENDING_TASK_TIMEOUT_MS`, fake timers) acts like `task:failed`
+- [ ] T045 [P] [US2] Extend test (FR-011c): pending timeout (`PENDING_TASK_TIMEOUT_MS`, fake timers) acts like `task:failed`
 - [ ] T046 [P] [US2] Extend test: append failure (non-202 or `task-message:append-failed` event) sends one delivery-failed notice and does not retry (FR-011b)
 
 ### Implementation for US2
@@ -168,13 +171,13 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 
 - [ ] T059 [P] [US5] Write integration test `tests/integration/us5-loops.test.js`: `personEmail` equal to `WXCC_BUSINESS_ADDRESS` (and `WEBEX_BOT_EMAIL`, case-insensitive) → no Get Message needed, no WxCC call, rejection `business-address-sender`/`bot-sender`
 - [ ] T060 [P] [US5] Write integration test `tests/integration/us5-duplicates.test.js`: same Webex envelope twice (including different bridge `eventId`s) → one create/append; replayed outbound event (same `id`, and same `aliasId` with different `id`) → one Webex post; replayed `task:ended`/`task:new`/`task:failed` handled once; concurrent duplicates processed once
-- [ ] T061 [P] [US5] Write integration test `tests/integration/us5-rejections.test.js`: empty text, whitespace-only, `files` present, non-`messages` resource, non-`created` event, malformed envelope, wrong `pairId`, unknown source, unsupported WxCC type, wrong channel → no WxCC call, `warn`/`error` log with `reason` ∈ `empty|non-text|malformed-envelope|malformed-payload|unsupported-event|unknown-source|wrong-direction|wrong-channel|business-address-sender|bot-sender|unknown-task|duplicate`
+- [ ] T061 [P] [US5] Write integration test `tests/integration/us5-rejections.test.js`: empty text, whitespace-only, `files` present, non-`messages` resource, non-`created` event, malformed envelope, wrong `pairId`, unknown source, unsupported WxCC type, wrong channel, lifecycle `OUTBOUND` direction on `task:new` → no WxCC call, `warn`/`error` log with `reason` ∈ `empty|non-text|malformed-envelope|malformed-payload|unsupported-event|unknown-source|wrong-direction|wrong-channel|business-address-sender|bot-sender|unknown-task|duplicate`
 
 ### Implementation for US5
 
 - [ ] T062 [US5] Add sender guards at the top of `handleWebexMessage` in `src/handlers/webex-inbound.js` (compare `data.personEmail`, then the fetched message's `personEmail`, to `WXCC_BUSINESS_ADDRESS` and `WEBEX_BOT_EMAIL` case-insensitively) before any WxCC call
-- [ ] T063 [US5] Add the `Rejection` helper in `src/handlers/rejection.js` (`reject(reason, ids)` logging `warn`/`error` with outcome `rejected`) and use it across `src/handlers/index.js`, `webex-inbound.js`, `wxcc-events.js`, and the bridge socket
-- [ ] T064 [US5] Add bridge-level key `bridge:{pairId}:{eventId}` (informational duplicate detection) in `src/handlers/index.js` and ensure duplicate outcomes log `outcome: "duplicate"` with the original key
+- [ ] T063 [US5] Ensure every rejection path uses `reject()` from `src/handlers/rejection.js` across `src/handlers/index.js`, `webex-inbound.js`, `wxcc-events.js`, and the bridge socket
+- [ ] T064 [US5] Log the bridge `eventId` on every record (no registry claim; the bridge id is unique per delivery per research R-06) and ensure duplicate outcomes from payload-based keys log `outcome: "duplicate"` with the original key
 - [ ] T065 [US5] Validate embedded payload shape before routing in `src/events/classify.js` (required `data` fields per kind; missing → `malformed-payload`)
 
 **Checkpoint**: Loop, replay, and bad-input protection verified.
@@ -189,7 +192,7 @@ description: "Task list for Webex Messaging to WxCC BYOC middleware"
 
 ### Tests for US4
 
-- [ ] T066 [P] [US4] Write integration test `tests/integration/us4-ended.test.js`: `task:ended` (`data.direction` `INBOUND`) → one chat-ended post to the room, conversation removed, later message creates a new task
+- [ ] T066 [P] [US4] Write integration test `tests/integration/us4-ended.test.js`: `task:ended` (any `data.direction`) → one chat-ended post to the room, conversation removed, later message creates a new task
 - [ ] T067 [P] [US4] Extend test: unknown task → no post (`unknown-task`); duplicate `task:ended` → one post; other lifecycle types (for example `task:connected`) → no post (`unsupported-event`)
 
 ### Implementation for US4
@@ -277,5 +280,5 @@ Anyone:      T009, T010, T011 (fixtures), T016 → T017, T018 → T019
 
 ## Task Summary
 
-- Total tasks: 81
+- Total tasks: 84 (original 81 plus T012a, T034a, T035a)
 - Setup 5, Foundational 27 (T006–T032), US1 8 (T033–T040), US2 11 (T041–T051), US3 7 (T052–T058), US5 7 (T059–T065), US4 4 (T066–T069), US6 5 (T070–T074), Polish 7 (T075–T081)

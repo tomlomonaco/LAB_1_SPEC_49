@@ -1,4 +1,4 @@
-﻿# Phase 0 Research: Webex Messaging ↔ WxCC BYOC Middleware
+# Phase 0 Research: Webex Messaging ↔ WxCC BYOC Middleware
 
 ## Authoritative source map
 
@@ -18,7 +18,8 @@ Spec sources (pinned for contract tests): https://github.com/webex/webex-openapi
 ### R-01 Runtime and dependencies
 - **Decision**: Node.js 26 (verified `v26.10.0` locally), ES modules, no web framework. Use built-ins: global `WebSocket` and `fetch`, `node:http` (readiness), `node:test` + `node:assert`, `process.loadEnvFile`, `node:crypto`. Runtime deps limited to `ajv` and `ajv-formats` (validate real payloads against the OpenAPI schemas). Set `"engines": {"node": ">=26"}`.
 - **Rationale**: Constitution IV (YAGNI) and II (fewer audit surfaces); schema validation is mandated by the spec, and hand-written validators would be invented DTOs.
-- **Alternatives**: `ws` + `dotenv` + `jest` (more deps, no benefit on Node 26); hand-rolled validators (drift risk).
+- **Test-only**: `ws` as devDependency for the fake bridge server.
+- **Alternatives**: `dotenv` + `jest` (more deps, no benefit on Node 26); hand-rolled validators (drift risk).
 
 ### R-02 Schema source for contract tests
 - **Decision**: Vendor a **verbatim extract** of the needed OpenAPI component schemas into `src/contracts/` (JSON, with a header recording source URL and retrieval date) plus a script to re-extract and diff against upstream. Tests validate real request/response bodies against these with Ajv. No simplified DTOs.
@@ -67,7 +68,7 @@ Spec sources (pinned for contract tests): https://github.com/webex/webex-openapi
 - **Alternatives**: pino/winston — rejected (no configurable infra required).
 
 ### R-13 URL conventions
-- **Decision**: "Scheme plus top-level domain" is implemented as origin only (scheme + host, no path). WxCC regional hosts such as `api.wxcc-us1.cisco.com` carry a subdomain; the rule is applied as "no path". Endpoint variables (`WXCC_TOKEN_URL`) are used verbatim.
+- **Decision**: "Scheme plus top-level domain" is amended (analysis F3, approved): FR-025 reads "scheme and host, no path". WxCC regional hosts such as `api.wxcc-us1.cisco.com` carry a subdomain and are allowed. Endpoint variables (`WXCC_TOKEN_URL`) are used verbatim.
 
 ### R-14 Test strategy
 - **Contract tests** (`tests/contract`): mock HTTP server on loopback asserting exact URL, method, headers, body, status; request and response bodies validated with Ajv against vendored OpenAPI schemas; includes `201`, approved `202`, and bad bodies.

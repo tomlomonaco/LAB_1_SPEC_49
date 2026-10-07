@@ -1,8 +1,8 @@
-﻿# Contract: Configuration (`.env`)
+# Contract: Configuration (`.env`)
 
 `.env` is loaded with Node's built-in `process.loadEnvFile`; values are validated before the socket is opened. Failures report variable **names** only. `.env` is git-ignored; `.env.example` holds placeholders only.
 
-**URL conventions**: *Root* = scheme + host only (no path, query, or trailing slash); code appends documented paths. *Endpoint* = complete URL used verbatim; code never appends to it.
+**URL conventions**: *Root* = scheme + host only (no path, query, or trailing slash; subdomains allowed); code appends documented paths. *Endpoint* = complete URL used verbatim; code never appends to it.
 
 | Service | Variable | Kind | Example placeholder |
 |---------|----------|------|---------------------|

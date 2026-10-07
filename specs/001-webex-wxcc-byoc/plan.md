@@ -1,4 +1,4 @@
-﻿# Implementation Plan: Webex Messaging to WxCC BYOC Middleware
+# Implementation Plan: Webex Messaging to WxCC BYOC Middleware
 
 **Branch**: `001-webex-wxcc-byoc` | **Date**: 2026-10-07 | **Spec**: [spec.md](./spec.md)
 
@@ -12,7 +12,7 @@ A Node.js 26 middleware that consumes Webex Messaging and WxCC webhooks as the `
 
 **Language/Version**: JavaScript (ES modules) on Node.js 26 (`engines >=26`)
 
-**Primary Dependencies**: `ajv`, `ajv-formats` (OpenAPI schema validation). Built-ins only otherwise: `fetch`, `WebSocket`, `node:http`, `node:test`, `node:crypto`, `process.loadEnvFile`
+**Primary Dependencies**: `ajv`, `ajv-formats` (OpenAPI schema validation); dev-only `ws` (fake bridge WebSocket server for integration tests; Node provides a WebSocket client but no server). Built-ins only otherwise: `fetch`, `WebSocket`, `node:http`, `node:test`, `node:crypto`, `process.loadEnvFile`
 
 **Storage**: In-memory only (conversation map, idempotency registry, token cache); lost on restart (documented)
 
@@ -35,9 +35,9 @@ A Node.js 26 middleware that consumes Webex Messaging and WxCC webhooks as the `
 | Principle | Status | How the plan complies |
 |-----------|--------|-----------------------|
 | I. API-First Specification | PASS | Contracts extracted before code ([contracts/](./contracts)); each client call carries endpoint URL + spec link comment; DEV-001 recorded in [deviations.md](../../deviations.md) |
-| II. Zero Known Vulnerabilities | PASS | Two deps only; `npm audit --audit-level=moderate` in test workflow and every PR |
+| II. Zero Known Vulnerabilities | PASS | Two runtime deps plus dev-only `ws`; `npm audit --audit-level=moderate` in test workflow and every PR |
 | III. Structured Observability | PASS | Single `log()` function; fixed levels; every call/transition/rejection/failure logged ([research R-12](./research.md)) |
-| IV. POC Simplicity | PASS | No framework, logger lib, DB, or abstraction layers; `ajv` justified by schema-validation requirement; `WEBEX_BOT_EMAIL` and `PENDING_TASK_TIMEOUT_MS` justified by loop prevention and the spec's stuck-creation edge case |
+| IV. POC Simplicity | PASS | No framework, logger lib, DB, or abstraction layers; `ajv` justified by schema-validation requirement, `ws` (dev) by the absence of a built-in WebSocket server for bridge tests; `WEBEX_BOT_EMAIL` and `PENDING_TASK_TIMEOUT_MS` justified by loop prevention and the spec's stuck-creation edge case |
 | V. Secure Auth & Secret Hygiene | PASS | Env-only config, `.env.example` placeholders, redaction tests, refresh-token workflow |
 | VI. Cross-Platform Paths | PASS | `node:path`/`node:url` only; no hardcoded separators; tests avoid OS assumptions |
 
@@ -77,7 +77,10 @@ src/
 │   └── envelope.js          # envelope validation
 ├── events/
 │   └── classify.js          # source → kind → direction
+├── messages.js              # fixed notice texts
 ├── handlers/
+│   ├── index.js             # dispatch(classified)
+│   ├── rejection.js         # reject() helper
 │   ├── webex-inbound.js     # validate, ignore rules, create/append/queue
 │   └── wxcc-events.js       # task:new/failed/ended, outbound, append-failed
 ├── state/
@@ -90,8 +93,11 @@ src/
 ├── contracts/               # vendored OpenAPI schema extracts + Ajv validators
 └── readiness.js             # GET /ready
 
+scripts/
+└── extract-schemas.js       # vendors OpenAPI schema extracts
+
 tests/
-├── fixtures/                # production-shaped Webex, WxCC, bridge payloads
+├── fixtures/                # production-shaped Webex, WxCC, bridge payloads (+ fake-bridge.js using ws)
 ├── contract/                # URL/method/header/body/status vs schemas
 ├── unit/
 └── integration/             # fake bridge + mock services, full flows

@@ -1,4 +1,4 @@
-﻿# Quickstart & Validation Guide
+# Quickstart & Validation Guide
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ Run `npm start`, keep its stdout/stderr visible, and capture log lines as eviden
 | 4 | Append | Send a second DM | Same task shows the message; no new task | `wxcc.append-message` success; `task.append` success |
 | 5 | Outbound | Reply from agent desktop (and a flow message) | Text arrives in the same Webex DM, once | `routing.outbound` success; `webex.create-message` success; no WxCC call |
 | 6 | Closure | End the task in agent desktop | Webex user gets chat-ended message; next DM creates a new task | `task:ended` handled; `webex.create-message` success; `conversation.cleared` |
-| 7 | Loop prevention | Make the business address post in the room (or inspect the bot's own reply arriving) | No task created or appended | `webex.ignore` rejected `business-address-sender` / `bot-sender` |
+| 7 | Loop prevention | Post from a test Webex user whose email is configured as `WXCC_BUSINESS_ADDRESS` (or observe the bot's own reply arriving) | No task created or appended | `webex.ignore` rejected `business-address-sender` / `bot-sender` |
 | 8 | Duplicates | Replay a captured Webex webhook and a captured WxCC outbound payload via the bridge `POST /v1/pairs/{PAIR_ID}/webhook` | No second task/append/Webex message | `duplicate` outcome (`warn`) with the original key |
 | 9 | Rejections | Send an attachment-only message and an empty-text message | No WxCC call; user not charged a task | `validation.reject` rejected reason `non-text` / `empty` |
 | 10 | Failure notice | Temporarily use an invalid `WXCC_CHANNEL_NAME` | Webex user receives a brief delivery-failed message; no retry | `wxcc.create-task` failure (or `task:failed` event) then `webex.create-message` success |

@@ -153,13 +153,13 @@ An operator configures the service via `.env`, and the service refuses to proces
 
 - **FR-005**: The system MUST support text-only messaging; the system MUST retrieve the full message content from the Webex Messages API as required by the Webex webhook contract.
 - **FR-006**: The system MUST reject empty, non-text, malformed, or unsupported payloads before creating or appending any task, and record the reason.
-- **FR-007**: The system MUST ignore Webex messages originating from `WXCC_BUSINESS_ADDRESS`, and these MUST NOT create or append tasks.
+- **FR-007**: The system MUST ignore Webex messages originating from `WXCC_BUSINESS_ADDRESS` or from the bot's own address (`WEBEX_BOT_EMAIL`), and these MUST NOT create or append tasks.
 - **FR-008**: The system MUST create a new WxCC task when no active task exists for the conversation, mapping `Origin.id` to the sender's `personEmail`.
 - **FR-009**: The system MUST append valid inbound messages to the conversation's active task.
 - **FR-010**: The system MUST maintain a conversation-to-task association so that appends and outbound routing use the same conversation and task.
 - **FR-011**: Only inbound traffic may create or append tasks or trigger Webex message ingestion.
 - **FR-011a**: Messages received while a task is being created MUST be queued in arrival order and appended after `task:new`; if `task:failed` arrives instead, queued messages are discarded.
-- **FR-011b**: If a message cannot be forwarded to WxCC (create or append failure), the system MUST send the Webex user a brief delivery-failed notice and MUST NOT retry automatically.
+- **FR-011c**: A task that stays pending without `task:new` for `PENDING_TASK_TIMEOUT_MS` (default 30000) MUST be treated as failed: queued messages are discarded, the delivery-failed notice is sent, and the association is cleared.`n- **FR-011d**: Failures to fetch a Webex message or to post a Webex notice MUST be logged with identifiers and MUST NOT be retried automatically or block later events.`n- **FR-011b**: If a message cannot be forwarded to WxCC (create or append failure), the system MUST send the Webex user a brief delivery-failed notice and MUST NOT retry automatically.
 
 **Outbound WxCC handling**
 
@@ -185,7 +185,7 @@ An operator configures the service via `.env`, and the service refuses to proces
 - **FR-022**: The Webex bot MUST authenticate using a static bot token.
 - **FR-023**: The WxCC service account MUST authenticate using the refresh-token workflow.
 - **FR-024**: The system MUST load configuration from `.env` and validate all required values before processing any message.
-- **FR-025**: The project MUST provide a service-organized `.env.example` with placeholder values only, where root URLs contain only scheme plus top-level domain.
+- **FR-025**: The project MUST provide a service-organized `.env.example` with placeholder values only, where root URLs contain only the scheme and host (no path, query, or trailing slash; regional hosts with subdomains are allowed), and endpoint URLs are complete and used verbatim.
 - **FR-026**: Credentials, tokens, secrets, and sensitive personal data MUST be redacted from logs, tests, documentation examples, build artifacts, and other project artifacts.
 
 **Observability**
@@ -223,5 +223,7 @@ An operator configures the service via `.env`, and the service refuses to proces
 - Messaging is text-only; attachments, cards, and reactions are out of scope and rejected.
 - The bridge neither authenticates nor deduplicates; the middleware handles both at the application level.
 - Webex webhooks and WxCC webhooks are already registered to deliver to the bridge pair webhook URL.
+- Notice texts are fixed constants: chat ended = "This chat has ended. Send a new message to start another."; delivery failed = "Sorry, your message could not be delivered. Please try again."
+- Lifecycle direction filtering (`data.direction`) applies to `task:new` only; `task:ended` and `task:failed` are matched by known `taskId` regardless of direction.
 - The exact stable identifiers for idempotency (for example Webex message ID and WxCC message ID) are taken from the authoritative payload definitions during planning.
 - The customer's `personEmail` is used for `Origin.id` and is treated as sensitive: logged only in redacted form.
