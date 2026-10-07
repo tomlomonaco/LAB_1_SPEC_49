@@ -1,0 +1,144 @@
+{
+  "source": "https://raw.githubusercontent.com/webex/webex-openapi-specs/main/public-spec/webex-messaging.json",
+  "retrieved": "2026-10-07",
+  "messageSchema": "ListMessage",
+  "components": {
+    "schemas": {
+      "ListMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk",
+            "description": "The unique identifier for the message."
+          },
+          "parentId": {
+            "type": "string",
+            "example": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk",
+            "description": "The unique identifier for the parent message."
+          },
+          "roomId": {
+            "type": "string",
+            "example": "Y2lzY29zcGFyazovL3VzL1JPT00vYmJjZWIxYWQtNDNmMS0zYjU4LTkxNDctZjE0YmIwYzRkMTU0",
+            "description": "The room ID of the message."
+          },
+          "roomType": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "group"
+            ],
+            "description": "The type of room.\n * `direct` - 1:1 room\n * `group` - group room\n"
+          },
+          "text": {
+            "type": "string",
+            "example": "PROJECT UPDATE - A new project plan has been published on http://example.com/s/lf5vj. The PM for this project is Mike C. and the Engineering Manager is Jane W.",
+            "description": "The message, in plain text. If `markdown` is specified this parameter may be *optionally* used to provide alternate text for UI clients that do not support rich text."
+          },
+          "markdown": {
+            "type": "string",
+            "example": "**PROJECT UPDATE** A new project plan has been published on <http://example.com/s/lf5vj>. The PM for this project is <@personEmail:mike@example.com> and the Engineering Manager is <@personEmail:jane@example.com>.",
+            "description": "The message, in Markdown format."
+          },
+          "html": {
+            "type": "string",
+            "example": "<p><strong>PROJECT UPDATE</strong> A new project plan has been published <a href=\\\"http://example.com/s/lf5vj\\\" rel=\\\"nofollow\\\">here</a>. The PM for this project is mike@example.com and the Engineering Manager is jane@example.com.</p>",
+            "description": "The text content of the message, in HTML format. This read-only property is used by the Webex clients."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "http://www.example.com/images/media.png"
+            },
+            "description": "Public URLs for files attached to the message. For the supported media types and the behavior of file uploads, see [Message Attachments](/docs/basics#message-attachments)."
+          },
+          "personId": {
+            "type": "string",
+            "example": "Y2lzY29zcGFyazovL3VzL1BFT1BMRS9mNWIzNjE4Ny1jOGRkLTQ3MjctOGIyZi1mOWM0NDdmMjkwNDY",
+            "description": "The person ID of the message author."
+          },
+          "personEmail": {
+            "type": "string",
+            "example": "matt@example.com",
+            "description": "The email address of the message author."
+          },
+          "mentionedPeople": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "Y2lzY29zcGFyazovL3VzL1BFT1BMRS8yNDlmNzRkOS1kYjhhLTQzY2EtODk2Yi04NzllZDI0MGFjNTM,Y2lzY29zcGFyazovL3VzL1BFT1BMRS83YWYyZjcyYy0xZDk1LTQxZjAtYTcxNi00MjlmZmNmYmM0ZDg"
+            },
+            "description": "People IDs for anyone mentioned in the message."
+          },
+          "mentionedGroups": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "all"
+            },
+            "description": "Group names for the groups mentioned in the message."
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            },
+            "description": "Message content attachments attached to the message. See the [Cards Guide](/docs/buttons-and-cards) for more information."
+          },
+          "created": {
+            "type": "string",
+            "example": "2015-10-18T14:26:16+00:00",
+            "description": "The date and time the message was created."
+          },
+          "updated": {
+            "type": "string",
+            "example": "2015-10-18T14:27:16+00:00",
+            "description": "The date and time that the message was last edited by the author. This field is only present when the message contents have changed."
+          },
+          "isVoiceClip": {
+            "type": "boolean",
+            "description": "`true` if the audio file is a voice clip recorded by the client; `false` if the audio file is a standard audio file not posted using the voice clip feature."
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/File",
+            "description": "Enterprise Content Management file."
+          }
+        }
+      },
+      "File": {
+        "type": "object",
+        "required": [
+          "fileId",
+          "type",
+          "contentUrl"
+        ],
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "example": "BFT1BMRS8yNDlmNzRkOS1kYjhhLTQzY2",
+            "description": "The `fileId` of the attachment."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "external",
+              "native"
+            ],
+            "description": "The type of attachment.\n * `external` - Attachment stored externally.\n * `native` - Attachment stored within the Webex platform.\n"
+          },
+          "contentUrl": {
+            "type": "string",
+            "example": "https://testecmwebexteams-my.sharepoint.com/:w:/g/personal/admin_testecmwebexteams_onmicrosoft_com/ESCiJiALU0pBlVm6TVhZ2k0B69XNVB1kWoaa7RIV9GERTg",
+            "description": "The URL for the content."
+          }
+        }
+      }
+    }
+  }
+}

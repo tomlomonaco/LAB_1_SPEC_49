@@ -1,0 +1,21 @@
+﻿{
+  "name": "webex-wxcc-byoc-middleware",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BYOC middleware connecting a Webex Messaging bot to Webex Contact Center via the hook-to-socket bridge",
+  "type": "module",
+  "engines": { "node": ">=26" },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/",
+    "audit": "npm audit --audit-level=moderate",
+    "extract-schemas": "node scripts/extract-schemas.js"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "ws": "^8.18.0"
+  }
+}
